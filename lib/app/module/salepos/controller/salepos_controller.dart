@@ -39,6 +39,7 @@ class ShopController extends GetxController {
         final first = entry.value.first;
         final batches = entry.value.map((b) {
           return ProductBatch(
+            batchid: (b['batchId'] ?? ""),
             stock: (b['quantityRemaining'] ?? 0).toDouble(),
             pricePerUnit: (b['perUnitCost'] ?? 0).toDouble(),
             purchaseDate: DateTime.tryParse(b['date'] ?? '') ?? DateTime.now(),
@@ -140,7 +141,7 @@ class ShopController extends GetxController {
   }
 
 
-  void completeSale() async {
+ /* void completeSale() async {
     final db = await DBHelper.database;
 
     for (var item in cart) {
@@ -152,6 +153,9 @@ class ShopController extends GetxController {
       // Convert both to base units (so kg/gm, etc. align)
       final saleInBase = qty * _getUnitFactor(unit);
       final stockInBase = batch.stock * _getUnitFactor(product.unit);
+
+      print("Sale in base unitqq: $saleInBase");
+      print("Stock in base unitqq: $stockInBase");
 
       if (saleInBase <= stockInBase) {
         final newStockBase = stockInBase - saleInBase;
@@ -172,7 +176,63 @@ class ShopController extends GetxController {
     // Clear cart and refresh UI
     cart.clear();
     products.refresh();
+  }*/
+
+
+  void completeSale() async {
+    final db = await DBHelper.database;
+
+    for (var item in cart) {
+      Product product = item["product"];
+      ProductBatch batch = item["batch"];
+      double qty = item["qty"];
+      String unit = item["unit"];
+      double price =  item["price"];
+
+      // Convert to base units
+      final saleInBase = qty * _getUnitFactor(unit);
+
+      // ✅ Get the current stock from DB for this batch
+      final currentStock = await DBHelper.getStockByBatch(batch.batchid as String);
+      final stockInBase = currentStock * _getUnitFactor(product.unit);
+
+      print("Sale in base unit: $saleInBase");
+      print("Stock in base unit: $stockInBase");
+
+      if (saleInBase <= stockInBase) {
+        final newStockBase = stockInBase - saleInBase;
+        final newStock = newStockBase / _getUnitFactor(product.unit);
+
+        // Update batch object locally
+        batch.stock = newStock;
+
+        await DBHelper.insertSale(
+          productName: product.name,
+          hindiName: product.hindiName,
+          batchId: batch.batchid,
+          qty: qty,
+          unit: unit,
+          price: price,
+          pricePerUnit: batch.pricePerUnit,
+        );
+
+        // Update in DB
+        await db.update(
+          'stock_list',
+          {'quantityRemaining': newStock},
+          where: 'batchId = ?',
+          whereArgs: [batch.batchid],
+        );
+      } else {
+        Get.snackbar("Stock Error", "Not enough stock available for ${product.name}");
+      }
+    }
+
+    // Clear cart and refresh UI
+    cart.clear();
+    products.refresh();
   }
+
 
 
   double get total => cart.fold(

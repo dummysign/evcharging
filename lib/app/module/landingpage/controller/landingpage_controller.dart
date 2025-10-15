@@ -24,7 +24,9 @@ class LandingPageController extends GetxController{
        case 'PRODUCT':
          Get.toNamed(Routes.PRODUCTLIST);
          break;
-
+       case 'REPORT':
+         Get.toNamed(Routes.REPORT);
+         break;
        default:
          Get.snackbar('Unknown', 'Unknown tab: $tabKey');
      }

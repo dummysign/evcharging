@@ -12,6 +12,13 @@ import '../module/productlist/binding/product_binding.dart';
 import '../module/productlist/view/product_view.dart';
 import '../module/qrcode/binding/qrcode_binding.dart';
 import '../module/qrcode/view/qrcode_view.dart';
+import '../module/report/binding/product_report_binding.dart';
+import '../module/report/binding/report_dashboard_binding.dart';
+import '../module/report/binding/sales_report_binding.dart';
+import '../module/report/controller/product_report_controller.dart';
+import '../module/report/view/product_report_view.dart';
+import '../module/report/view/report_controller_view.dart';
+import '../module/report/view/sales_report_view.dart';
 import '../module/salepos/binding/salepos_binding.dart';
 import '../module/salepos/view/salepos_view.dart';
 import '../module/scanner/binding/scanner_binding.dart';
@@ -114,6 +121,21 @@ class AppPages {
       name: _Paths.PRODUCTLIST,
       page: () => const ProductListScreen(),
       binding: ProductBinding(),
+    ),
+    GetPage(
+      name: _Paths.REPORT,
+      page: () => const ReportControllerView(),
+      binding: ReportDashboardBinding(),
+    ),
+    GetPage(
+      name: _Paths.PRODUCTREPORT,
+      page: () => const ProductReportView(),
+      binding: ProductReportBinding(),
+    ),
+    GetPage(
+      name: _Paths.SALEREPORT,
+      page: () => const SalesReportView(),
+      binding: SalesReportBinding(),
     ),
   ];
 }

@@ -225,7 +225,7 @@ class LandingPageView extends GetView<LandingPageController>{
                       Expanded(
                         child: GestureDetector(
                           onTap: (){
-                            controller.onOptionTag("User");
+                            controller.onOptionTag("REPORT");
                           },
                           child: Material(
                             elevation: 4.0,
@@ -240,7 +240,7 @@ class LandingPageView extends GetView<LandingPageController>{
                               child: Column(
                                 children: [
                                   SizedBox(height: 20),
-                                  Text('User',
+                                  Text('REPORT',
                                     style:TextStyle(
                                         fontFamily: 'popregular',
                                         fontSize: 15,

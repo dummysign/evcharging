@@ -42,23 +42,27 @@ class Product {
 
 
 class ProductBatch {
+  String batchid;
   double stock;
   double pricePerUnit;
   DateTime purchaseDate;
 
   ProductBatch({
+    required this.batchid,
     required this.stock,
     required this.pricePerUnit,
     required this.purchaseDate,
   });
 
   Map<String, dynamic> toJson() => {
+    "batchid": batchid,
     "stock": stock,
     "pricePerUnit": pricePerUnit,
     "purchaseDate": purchaseDate.toIso8601String(),
   };
 
   factory ProductBatch.fromJson(Map<String, dynamic> json) => ProductBatch(
+    batchid: (json["batchid"]),
     stock: (json["stock"] as num).toDouble(),
     pricePerUnit: (json["pricePerUnit"] as num).toDouble(),
     purchaseDate: DateTime.parse(json["purchaseDate"]),

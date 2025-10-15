@@ -16,6 +16,9 @@ abstract class Routes{
   static const KHATA = _Paths.KHATA;
   static const ADDPRODUCT = _Paths.ADDPRODUCT;
   static const PRODUCTLIST = _Paths.PRODUCTLIST;
+  static const REPORT = _Paths.REPORT;
+  static const PRODUCTREPORT = _Paths.PRODUCTREPORT;
+  static const SALEREPORT = _Paths.SALEREPORT;
 }
 
 abstract class _Paths {
@@ -35,4 +38,7 @@ abstract class _Paths {
   static const KHATA = '/khata';
   static const ADDPRODUCT = '/addproduct';
   static const PRODUCTLIST = '/productlist';
+  static const REPORT = '/report';
+  static const PRODUCTREPORT = '/productreport';
+  static const SALEREPORT = '/salereport';
 }
