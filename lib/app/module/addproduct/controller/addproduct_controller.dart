@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../common/api/data/db_helper.dart';
+
 class AddProductController extends GetxController {
   var productNameEnglish = ''.obs;
   var productNameHindi = ''.obs;
@@ -63,6 +65,40 @@ class AddProductController extends GetxController {
   Future<void> saveProduct() async {
     final now = DateTime.now();
     final monthKey = DateFormat('yyyy_MM').format(now); // e.g. 2025_10
+
+    final batchId =
+        "${productNameEnglish.value}_${DateFormat('yyyyMMdd_HHmm').format(now)}";
+
+    final newBatch = {
+      "batchId": batchId,
+      "englishName": productNameEnglish.value.trim(),
+      "hindiName": productNameHindi.value.trim(),
+      "brandName": brandName.value.trim(),
+      "unitType": unitType.value,
+      "quantityBought": quantity.value,
+      "quantityRemaining": quantity.value,
+      "totalPaid": totalAmountPaid.value,
+      "perUnitCost": perKgCost.value,
+      "profitType": profitType.value,
+      "profitValue": profitValue.value,
+      "gstPercent": gstPercent.value,
+      "suggestedPrice": suggestedPrice.value,
+      "isLoose": isLooseSell.value ? 1 : 0, // SQLite doesn’t have boolean type
+      "date": now.toIso8601String(),
+      "monthKey": monthKey,
+    };
+
+    // Insert into monthly product table
+    await DBHelper.insert('product_batches', newBatch);
+
+    // Insert into global stock list
+    await DBHelper.insert('stock_list', newBatch);
+  }
+
+
+ /* Future<void> saveProduct() async {
+    final now = DateTime.now();
+    final monthKey = DateFormat('yyyy_MM').format(now); // e.g. 2025_10
     final fileKey = "products_$monthKey";
 
     // Read the existing product batch list
@@ -101,6 +137,6 @@ class AddProductController extends GetxController {
     List<dynamic> stockList = box.read("stockList") ?? [];
     stockList.add(newBatch);
     await box.write("stockList", stockList);
-  }
+  }*/
 
 }

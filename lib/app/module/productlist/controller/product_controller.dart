@@ -8,11 +8,13 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../../../common/api/data/db_helper.dart';
+
 class ProductController extends GetxController {
   final box = GetStorage();
 
   // Reactive variables
-  var productList = <dynamic>[].obs;
+  var productList = <Map<String, dynamic>>[].obs;
   var searchQuery = ''.obs;
   var startDate = Rxn<DateTime>();
   var endDate = Rxn<DateTime>();
@@ -23,8 +25,9 @@ class ProductController extends GetxController {
     loadStock();
   }
 
-  void loadStock() {
-    productList.value = box.read("stockList") ?? [];
+  Future<void> loadStock() async {
+    final data = await DBHelper.getStockList(); // from SQLite
+    productList.value = data; // store reactive list
   }
 
   void clearFilters() {
@@ -34,7 +37,7 @@ class ProductController extends GetxController {
   }
 
   // Computed filtered list
-  List<dynamic> get filteredList {
+  List<Map<String, dynamic>>get filteredList {
     return productList.where((item) {
       final name = (item["englishName"] ?? "").toString().toLowerCase();
       final brand = (item["brandName"] ?? "").toString().toLowerCase();

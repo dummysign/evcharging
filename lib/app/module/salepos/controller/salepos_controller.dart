@@ -1,10 +1,253 @@
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import '../../../../common/api/data/db_helper.dart';
 import '../../../data/Customer.dart';
 import '../../../data/Product.dart';
 
 class ShopController extends GetxController {
-  final box = GetStorage();
+
+  final dbHelper = DBHelper();
+
+  var products = <Product>[].obs;
+  var cart = <Map<String, dynamic>>[].obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadProducts();
+  }
+
+  Future<void> loadProducts() async {
+    try {
+      final stockRows = await DBHelper.getStockList();
+
+      if (stockRows.isEmpty) {
+        // no data in DB → empty list (or optionally insert defaults)
+        products.value = [];
+        return;
+      }
+
+      // Group stock rows by englishName
+      final grouped = <String, List<Map<String, dynamic>>>{};
+      for (var row in stockRows) {
+        final name = row['englishName'] ?? '';
+        grouped.putIfAbsent(name, () => []).add(row);
+      }
+
+      // Convert to Product objects
+      products.value = grouped.entries.map((entry) {
+        final first = entry.value.first;
+        final batches = entry.value.map((b) {
+          return ProductBatch(
+            stock: (b['quantityRemaining'] ?? 0).toDouble(),
+            pricePerUnit: (b['perUnitCost'] ?? 0).toDouble(),
+            purchaseDate: DateTime.tryParse(b['date'] ?? '') ?? DateTime.now(),
+          );
+        }).toList();
+
+        return Product(
+          name: first['englishName'] ?? '',
+          hindiName: first['hindiName'] ?? '',
+          brandName: first['brandName'] ?? '',
+          unit: first['unitType'] ?? '',
+          batches: batches,
+        );
+      }).toList();
+    } catch (e) {
+      print("❌ Error loading products: $e");
+      products.value = [];
+    }
+  }
+
+
+ /* void sellProduct(Product product, double qty, double price, ProductBatch batch) async {
+    if (qty <= batch.stock) {
+      batch.stock -= qty;
+
+      cart.add({
+        "product": product,
+        "name": product.name,
+        "batch": batch,
+        "hindiName": product.hindiName,
+        "qty": qty,
+        "unit": product.unit,
+        "price": price,
+        "pricePerUnit": batch.pricePerUnit,
+        "batchDate": batch.purchaseDate,
+      });
+
+     *//* await dbHelper.updateBatchStock(
+        product.. ?? 0,
+        batch.purchaseDate,
+        batch.stock,
+      );*//*
+
+      products.refresh();
+      cart.refresh();
+    } else {
+      Get.snackbar("Stock Error", "Not enough stock available!");
+    }
+  }*/
+
+
+  void sellProduct(
+      Product product,
+      double qty,
+      double price,
+      ProductBatch batch,
+      String unit,
+      ) async {
+    // ✅ Always convert everything to base unit (kg/ltr)
+    final saleInBaseUnit = qty * _getUnitFactor(unit); // use sale unit
+    final stockInBaseUnit = batch.stock * _getUnitFactor(product.unit); // use product unit
+
+    print("Sale in base unit: $saleInBaseUnit");
+    print("Stock in base unit: $stockInBaseUnit");
+
+    if (saleInBaseUnit <= stockInBaseUnit) {
+      // Subtract in base unit
+      final newStockBase = stockInBaseUnit - saleInBaseUnit;
+
+      // Convert back to product’s unit
+      batch.stock = newStockBase / _getUnitFactor(product.unit);
+
+      cart.add({
+        "product": product,
+        "name": product.name,
+        "batch": batch,
+        "hindiName": product.hindiName,
+        "qty": qty,
+        "unit": unit, // ✅ Use the sale unit, not product.unit
+        "price": price,
+        "pricePerUnit": batch.pricePerUnit,
+        "batchDate": batch.purchaseDate,
+      });
+
+      /*// ✅ Update in DB
+      final db = await DBHelper.database;
+      await db.update(
+        'stock_list',
+        {'quantityRemaining': batch.stock},
+        where: 'englishName = ? AND date = ?',
+        whereArgs: [product.name, batch.purchaseDate.toIso8601String()],
+      );*/
+
+      products.refresh();
+      cart.refresh();
+    } else {
+      Get.snackbar("Stock Error", "Not enough stock available!");
+    }
+  }
+
+
+  void completeSale() async {
+    final db = await DBHelper.database;
+
+    for (var item in cart) {
+      Product product = item["product"];
+      ProductBatch batch = item["batch"];
+      double qty = item["qty"];
+      String unit = item["unit"];
+
+      // Convert both to base units (so kg/gm, etc. align)
+      final saleInBase = qty * _getUnitFactor(unit);
+      final stockInBase = batch.stock * _getUnitFactor(product.unit);
+
+      if (saleInBase <= stockInBase) {
+        final newStockBase = stockInBase - saleInBase;
+        batch.stock = newStockBase / _getUnitFactor(product.unit);
+
+        // ✅ Update in local DB
+        await db.update(
+          'stock_list',
+          {'quantityRemaining': batch.stock},
+          where: 'englishName = ? AND date = ?',
+          whereArgs: [product.name, batch.purchaseDate.toIso8601String()],
+        );
+      } else {
+        Get.snackbar("Stock Error", "Not enough stock available for ${product.name}");
+      }
+    }
+
+    // Clear cart and refresh UI
+    cart.clear();
+    products.refresh();
+  }
+
+
+  double get total => cart.fold(
+      0, (sum, item) => sum + ((item['price'] ?? 0) * (item['qty'] ?? 0)));
+
+  void clearCart() => cart.clear();
+
+  var customers = <Customer>[
+    Customer(name: "Ramesh Kumar", hindiName: "रामेश कुमार"),
+    Customer(name: "Sita Devi", hindiName: "सीता देवी"),
+  ].obs;
+
+  void addToKhata(Customer customer) async {
+    final db = await DBHelper.database;
+
+    for (var item in cart) {
+      Product product = item["product"];
+      ProductBatch batch = item["batch"];
+      double qty = item["qty"];
+      String unit = item["unit"];
+
+      // 1️⃣ Record the transaction in customer ledger
+      customer.ledger.add({
+        "productName": item['name'],
+        "productHindiName": item['hindiName'],
+        "qty": qty,
+        "unit": unit,
+        "price": item['price'],
+        "date": DateTime.now(),
+      });
+
+      // 2️⃣ Update stock in base units
+      final saleInBase = qty * _getUnitFactor(unit);
+      final stockInBase = batch.stock * _getUnitFactor(product.unit);
+
+      if (saleInBase <= stockInBase) {
+        final newStockBase = stockInBase - saleInBase;
+        batch.stock = newStockBase / _getUnitFactor(product.unit);
+
+        await db.update(
+          'stock_list',
+          {'quantityRemaining': batch.stock},
+          where: 'englishName = ? AND date = ?',
+          whereArgs: [product.name, batch.purchaseDate.toIso8601String()],
+        );
+      } else {
+        Get.snackbar("Stock Error", "Not enough stock available for ${product.name}");
+      }
+    }
+
+    // 3️⃣ Clear cart
+    cart.clear();
+    products.refresh();
+  }
+
+
+  double _getUnitFactor(String? unit) {
+    switch (unit?.toLowerCase()) {
+      case 'kg':
+      case 'ltr':
+        return 1.0; // base
+      case 'g':
+      case 'gm':
+      case 'ml':
+        return 0.001; // 1 gm/ml = 0.001 kg/ltr
+      case 'pcs':
+      case 'piece':
+        return 1.0;
+      default:
+        return 1.0;
+    }
+  }
+
+
+  /*final box = GetStorage();
 
   // Reactive product list
   var products = <Product>[].obs;
@@ -121,7 +364,7 @@ class ShopController extends GetxController {
 
 
   // Sell product: supports multiple batches (FIFO)
- /* void sellProduct(String productName, double qty, double sellingPrice) {
+ *//* void sellProduct(String productName, double qty, double sellingPrice) {
     final product =
     products.firstWhereOrNull((p) => p.name == productName);
 
@@ -165,7 +408,7 @@ class ShopController extends GetxController {
     products.refresh();
     cart.refresh();
     saveProducts(); // persist stock
-  }*/
+  }*//*
 
   void completeSale() {
     final box = GetStorage();
@@ -215,5 +458,5 @@ class ShopController extends GetxController {
   var customers = <Customer>[
     Customer(name: "Ramesh Kumar", hindiName: "रामेश कुमार"), Customer(name: "Sita Devi", hindiName: "सीता देवी"), ].obs; void addToKhata(Customer customer) { for (var item in cart)
     { customer.ledger.add({ "productName": item['name'], "productHindiName": item['hindiName'], "qty": item['qty'], "unit": item['unit'], "price": item['price'], "date": DateTime.now(), }); }
-  cart.clear(); }
+  cart.clear(); }*/
 }

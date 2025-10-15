@@ -277,7 +277,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                                             "Payment / भुगतान",
                                             "Processing payment of ₹${controller.total.toStringAsFixed(2)}",
                                           );
-                                          controller.clearCart();
+                                        //  controller.clearCart();
                                           Navigator.pop(context); // Close bottom sheet
                                         },
                                         icon: Icon(Icons.payment),
@@ -328,6 +328,8 @@ class ShopkeeperScreen extends GetView<ShopController> {
         case 'ml':
           return 0.001;
         case 'piece':
+          return 1.0;
+        case 'pcs':
           return 1.0;
         default:
           return 1.0;
@@ -409,7 +411,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                         Text("Unit: "),
                         DropdownButton<String>(
                           value: product.selectedUnit,
-                          items: ['kg','gm','ltr','ml','piece'].map((u) =>
+                          items: ['kg','gm','ltr','ml','piece','pcs'].map((u) =>
                               DropdownMenuItem(value: u, child: Text(u))
                           ).toList(),
                           onChanged: (val) {
@@ -430,7 +432,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                           value: selectedBatch,
                           items: product.batches.map((b) => DropdownMenuItem(
                             value: b,
-                            child: Text("${b.purchaseDate.toIso8601String().split('T')[0]} | Stock: ${b.stock.toStringAsFixed(2)} ${product.unit} | ₹${b.pricePerUnit.toStringAsFixed(2)}"),
+                            child: Text("${b.purchaseDate.toIso8601String().split('T')[0]} | Stock: ${b.stock.toStringAsFixed(2)} ${product.unit} | Stock: ${b.stock.toStringAsFixed(2)} ${product.unit} | ₹${b.pricePerUnit.toStringAsFixed(2)}"),
                           )).toList(),
                           onChanged: (b) {
                             selectedBatch = b;
@@ -561,7 +563,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                               calculatedPrice != null &&
                               calculatedQty! * getUnitFactor(product.selectedUnit) <= getBatchStock()) {
                             controller.sellProduct(
-                                product, calculatedQty!, calculatedPrice!, selectedBatch!);
+                                product, calculatedQty!, calculatedPrice!, selectedBatch!,product.selectedUnit);
                             Navigator.of(context).pop();
                           } else {
                             Get.snackbar(
