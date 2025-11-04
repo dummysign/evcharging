@@ -24,6 +24,20 @@ class VendorView extends GetView<VendorController> {
         title: const Text('Register Charging Station'),
         centerTitle: true,
         backgroundColor: AppColors.app_color,
+        actions: [
+          Obx(() => IconButton(
+            onPressed: controller.toggleListening,
+            icon: Icon(
+              controller.isListening.value
+                  ? Icons.mic  // active state
+                  : Icons.mic_none, // idle state
+              color: Colors.white,
+            ),
+            tooltip: controller.isListening.value
+                ? 'Stop voice control'
+                : 'Start voice control',
+          )),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -67,9 +81,39 @@ class VendorView extends GetView<VendorController> {
         SizedBox(height: Get.height * 0.01),
         Row(
           children: [
-            Expanded(
-              child: Obx(
-                    () => InputField(
+            Obx((){
+              if (controller.voiceCommandType.value == 'charging') {
+                // Reset it so it doesn’t trigger again
+                controller.voiceCommandType.value = '';
+
+                // Now call your dialog from this widget’s context
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  controller.branddetails.clear();
+                  controller.brandid.value = "";
+                  controller.modelController.value.text = "";
+                  controller.chargingTypeController.value.text = "";
+
+                  Utils.loadingDialog();
+                  await controller.fatch('BRAND');
+                  Utils.closeDialog();
+
+                  if (controller.branddetails.isNotEmpty) {
+                    controller.showSearchDialog<Cardetails>(
+                      context: context,
+                      title: 'Select Plus',
+                      options: controller.branddetails,
+                      controller: controller.BrandController,
+                      displayText: (item) => '${item?.brand ?? ''}',
+                      filterCriteria: (item) => item.brand ?? '',
+                      onItemSelected: (selected) async {
+                        controller.brandid.value = selected.id ?? '';
+                      },
+                    );
+                  }
+                });
+              }
+             return Expanded(
+                child: InputField(
                   label: 'Charging Plus',
                   hintText: "Select Plus",
                   controller: controller.BrandController.value,
@@ -100,9 +144,9 @@ class VendorView extends GetView<VendorController> {
                           //    controller.BrandController.value = selected.brand ?? '';
                           controller.brandid.value = selected.id ?? '';
                           /* controller.audit_cost_id.value = selected.id ?? '';
-                          Utils.loadingDialog();
-                          await controller.fatchALocation(selected.id ?? '');
-                          Utils.closeDialog();*/
+                            Utils.loadingDialog();
+                            await controller.fatchALocation(selected.id ?? '');
+                            Utils.closeDialog();*/
                         },
                       );
                     } else {
@@ -111,7 +155,9 @@ class VendorView extends GetView<VendorController> {
                   },
                   isMandatory: true,
                 ),
-              ),
+
+              );
+  }
             ),
             SizedBox(width: MediaQuery.of(context).size.width * 0.02),
             Expanded(

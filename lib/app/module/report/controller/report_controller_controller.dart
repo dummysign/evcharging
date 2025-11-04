@@ -49,7 +49,6 @@ class ReportControllerController extends GetxController {
           // Parse the date string from DB
           final rawDate = DateTime.parse(e["date"]);
           final formattedDate = DateFormat('dd MMM').format(rawDate); // e.g., 15 Oct
-
           return {
             "product": e["englishName"],
             "stock": e["quantityRemaining"],

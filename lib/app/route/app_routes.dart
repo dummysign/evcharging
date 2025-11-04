@@ -19,6 +19,7 @@ abstract class Routes{
   static const REPORT = _Paths.REPORT;
   static const PRODUCTREPORT = _Paths.PRODUCTREPORT;
   static const SALEREPORT = _Paths.SALEREPORT;
+  static const SPTEXT = _Paths.SPTEXT;
 }
 
 abstract class _Paths {
@@ -41,4 +42,5 @@ abstract class _Paths {
   static const REPORT = '/report';
   static const PRODUCTREPORT = '/productreport';
   static const SALEREPORT = '/salereport';
+  static const SPTEXT = '/sptext';
 }

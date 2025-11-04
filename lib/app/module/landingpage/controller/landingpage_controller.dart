@@ -13,7 +13,7 @@ class LandingPageController extends GetxController{
          Get.toNamed(Routes.VENDORNFO);
          break;
        case 'User':
-         Get.toNamed(Routes.STATIONMARK);
+         Get.toNamed(Routes.SPTEXT);
          break;
        case 'NEW SALE':
          Get.toNamed(Routes.SALEPOS);

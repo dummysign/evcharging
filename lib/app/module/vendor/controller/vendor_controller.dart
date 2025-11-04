@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../../common/api/data/ApiHelper.dart';
 import '../../../../common/api/utils/utils.dart';
@@ -15,10 +16,14 @@ import '../../../widget/SearchableMultiSelectionDialog.dart';
 import '../../../widget/SearchableSelectionDialog.dart';
 
 class VendorController extends GetxController{
+  final stt.SpeechToText _speech = stt.SpeechToText();
   final List<String> chargingTypes = ['AC', 'DC', 'Type 2', 'CCS', 'Type 2', 'CCS'];
   final RxList<String> selectedChargingTypes = <String>[].obs;
   RxList<String> selectedFacilities = <String>[].obs;
+  var isListening = false.obs;
 
+  var recognizedText = ''.obs;
+  var voiceCommandType = ''.obs;
 
   List<String> allFacilities = [
     "Restaurant",
@@ -66,6 +71,7 @@ class VendorController extends GetxController{
   @override
   void onInit() {
     super.onInit();
+    initSpeech();
     // onGetAssetDetails();
     getCurrentLocation();
   }
@@ -140,7 +146,8 @@ class VendorController extends GetxController{
         print("Error fetching Address: $e");
         Utils.closeDialog();
       }
-    }else if (type == "MODEL") {
+    }
+    else if (type == "MODEL") {
       _body2.clear();
       _body2["database"] = "aananda_macotest";
       _body2["brandid"] = brandid.value;
@@ -354,6 +361,72 @@ class VendorController extends GetxController{
     capturedImage.value = null;
     form.fields.clear();
     form.files.clear();
+  }
+
+  Future<void> toggleListening() async {
+    if (isListening.value) {
+      await stopListening();
+    } else {
+      await startListening();
+    }
+  }
+
+  /// Stop listening
+  Future<void> stopListening() async {
+    await _speech.stop();
+    isListening.value = false;
+  }
+
+
+  /// Initialize speech recognition
+  Future<void> initSpeech() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) => print('Speech status: $status'),
+      onError: (error) => print('Speech error: $error'),
+    );
+
+    if (available) {
+      print("Speech recognition initialized ✅");
+    } else {
+      print("Speech recognition unavailable ❌");
+    }
+  }
+
+  /// Start listening
+  Future<void> startListening() async {
+    await _speech.listen(
+      onResult: (result) async {
+        recognizedText.value = result.recognizedWords;
+        handleVoiceCommand(recognizedText.value);
+
+        // Auto-translate as user speaks
+       /* if (recognizedText.isNotEmpty) {
+          var translation =
+          await _translator.translate(recognizedText.value, to: 'hi');
+          translatedText.value = translation.text;
+        }*/
+      },
+      localeId: 'en_IN', // or use 'en_US'
+      listenMode: stt.ListenMode.dictation,
+    );
+    isListening.value = true;
+  }
+
+  /// 🧠 Handle recognized commands
+  void handleVoiceCommand(String command) {
+    if (command.contains('charging')) {
+     // fatch('BRAND');
+      voiceCommandType.value = 'charging';
+    //  Get.offAllNamed(Routes.REPORT);
+    } else if (command.contains('dashboard')) {
+      Get.offAllNamed(Routes.HOMEPAGE);
+    } else if (command.contains('setting') || command.contains('settings')) {
+      Get.toNamed('/settings');
+    } else if (command.contains('NEW SALE')) {
+      Get.toNamed(Routes.SALEPOS);
+    } else {
+      Get.snackbar("Voice Command", "Command not recognized 👀");
+    }
   }
 
 }

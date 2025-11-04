@@ -23,6 +23,8 @@ import '../module/salepos/binding/salepos_binding.dart';
 import '../module/salepos/view/salepos_view.dart';
 import '../module/scanner/binding/scanner_binding.dart';
 import '../module/scanner/view/scanner_view.dart';
+import '../module/speechtotext/binding/sptext_binding.dart';
+import '../module/speechtotext/view/sptext_view.dart';
 import '../module/splash/binding/splash_binding.dart';
 import '../module/splash/view/splash_view.dart';
 import '../module/stationlist/binding/stationlist_binding.dart';
@@ -136,6 +138,11 @@ class AppPages {
       name: _Paths.SALEREPORT,
       page: () => const SalesReportView(),
       binding: SalesReportBinding(),
+    ),
+    GetPage(
+      name: _Paths.SPTEXT,
+      page: () => const SpeechPage(),
+      binding: SptextBinding(),
     ),
   ];
 }
