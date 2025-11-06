@@ -73,7 +73,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                     double qty = (item['qty'] ?? 0).toDouble();
                     double pricePerUnit = (item['pricePerUnit'] ?? 0).toDouble();
                     String unit = item['unit'] ?? "";
-                    double price = (unit == "piece" ? qty : qty / 1000) * pricePerUnit;
+                    double price = item['price'] ;//(unit == "pcs" ? qty : qty ) * pricePerUnit;
                     item['price'] = price;
 
                    /* double qty = (item['qty'] ?? 0).toDouble();

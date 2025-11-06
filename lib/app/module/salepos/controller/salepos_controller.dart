@@ -41,7 +41,7 @@ class ShopController extends GetxController {
           return ProductBatch(
             batchid: (b['batchId'] ?? ""),
             stock: (b['quantityRemaining'] ?? 0).toDouble(),
-            pricePerUnit: (b['perUnitCost'] ?? 0).toDouble(),
+            pricePerUnit: (b['suggestedPrice'] ?? 0).toDouble(),
             purchaseDate: DateTime.tryParse(b['date'] ?? '') ?? DateTime.now(),
           );
         }).toList();
@@ -236,7 +236,7 @@ class ShopController extends GetxController {
 
 
   double get total => cart.fold(
-      0, (sum, item) => sum + ((item['price'] ?? 0) * (item['qty'] ?? 0)));
+      0, (sum, item) => sum + ((item['price'] ?? 0) /** (item['qty'] ?? 0)*/));
 
   void clearCart() => cart.clear();
 
