@@ -12,6 +12,8 @@ void main() {
     print('Error : $details');
   };
 
+
+
   SystemChrome.setSystemUIOverlayStyle(
     SystemUiOverlayStyle(statusBarBrightness: Brightness.light,
       statusBarIconBrightness:Brightness.light,

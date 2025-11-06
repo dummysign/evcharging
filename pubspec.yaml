@@ -59,6 +59,9 @@ dependencies:
   flutter_svg: ^2.0.7
   speech_to_text: ^7.3.0
   translator: ^1.0.4+1
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0
 
 
 

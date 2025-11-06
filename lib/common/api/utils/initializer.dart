@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -29,7 +30,7 @@ class Initializer{
     runZonedGuarded(() async {
 
       WidgetsFlutterBinding.ensureInitialized();
-    //  await Firebase.initializeApp();
+      await Firebase.initializeApp();
 
       FlutterError.onError = (details) {
         FlutterError.dumpErrorToConsole(details);
