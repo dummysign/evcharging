@@ -25,7 +25,7 @@ android {
         applicationId = "com.maco.evcharging"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -42,4 +42,14 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
+    // implementation('com.google.firebase:firebase-analytics:22.1.0')
+    implementation("com.google.firebase:firebase-analytics")
+    //   implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+    //  implementation 'com.google.android.gms:play-services-measurement-api:22.1.0'
+    //  implementation "me.leolin:ShortcutBadger:1.1.22@aar"
+    //  implementation 'com.android.support:multidex:1.0.3'
 }

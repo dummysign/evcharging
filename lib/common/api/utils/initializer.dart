@@ -28,7 +28,6 @@ class Initializer{
     };
 
     runZonedGuarded(() async {
-
       WidgetsFlutterBinding.ensureInitialized();
       await Firebase.initializeApp();
 
