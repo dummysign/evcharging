@@ -179,7 +179,7 @@ class ShopController extends GetxController {
   }*/
 
 
-  void completeSale() async {
+ /* void completeSale() async {
     final db = await DBHelper.database;
 
     for (var item in cart) {
@@ -231,6 +231,77 @@ class ShopController extends GetxController {
     // Clear cart and refresh UI
     cart.clear();
     products.refresh();
+  }*/
+
+
+  void completeSale({
+    required String customerName,
+    required String paymentMode,
+  }) async {
+    final db = await DBHelper.database;
+
+    // 1️⃣ Collect all items in the sale
+    List<Map<String, dynamic>> saleItems = [];
+    double totalAmount = 0;
+
+    for (var item in cart) {
+      Product product = item["product"];
+      ProductBatch batch = item["batch"];
+      double qty = item["qty"];
+      String unit = item["unit"];
+      double price = item["price"];
+
+      final saleInBase = qty * _getUnitFactor(unit);
+      final currentStock = await DBHelper.getStockByBatch(batch.batchid as String);
+      final stockInBase = currentStock * _getUnitFactor(product.unit);
+
+      if (saleInBase > stockInBase) {
+        Get.snackbar("Stock Error", "Not enough stock for ${product.name}");
+        return; // Stop the whole sale if any item fails
+      }
+
+      saleItems.add({
+        "productName": product.name,
+        "hindiName": product.hindiName,
+        "batchId": batch.batchid,
+        "qty": qty,
+        "unit": unit,
+        "price": price,
+        "pricePerUnit": batch.pricePerUnit,
+      });
+
+      totalAmount += price;
+    }
+
+    // 2️⃣ Save the grouped sale (in Firestore + SQLite)
+    await DBHelper.insertGroupedSale(
+      customerName: customerName,
+      paymentMode: paymentMode,
+      items: saleItems,
+    );
+
+    // 3️⃣ Update stock locally for each sold batch
+    for (var item in saleItems) {
+      final batchId = item["batchId"];
+      final qty = item["qty"] as double;
+
+      final currentStock = await DBHelper.getStockByBatch(batchId);
+      final newStock = currentStock - qty;
+
+      await db.update(
+        'stock_list',
+        {'quantityRemaining': newStock},
+        where: 'batchId = ?',
+        whereArgs: [batchId],
+      );
+    }
+
+    // 4️⃣ Clear cart and refresh UI
+    cart.clear();
+    products.refresh();
+
+    // 5️⃣ Optionally show confirmation
+    Get.snackbar("Sale Complete", "₹${totalAmount.toStringAsFixed(2)} sale saved successfully!");
   }
 
 

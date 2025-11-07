@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -82,6 +86,20 @@ class DBHelper {
             yearKey TEXT
           )
         ''');
+
+        await db.execute('''
+  CREATE TABLE IF NOT EXISTS grouped_sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customerName TEXT,
+    paymentMode TEXT,
+    totalAmount REAL,
+    date TEXT,
+    monthKey TEXT,
+    yearKey TEXT,
+    items TEXT   -- JSON string of all sold items
+  )
+''');
+
       },
     );
   }
@@ -117,6 +135,19 @@ class DBHelper {
     final monthKey = "${now.year}_${now.month.toString().padLeft(2, '0')}";
     final yearKey = "${now.year}";
 
+    final sale = {
+      'productName': productName,
+      'hindiName': hindiName,
+      'batchId': batchId,
+      'qty': qty,
+      'unit': unit,
+      'price': price,
+      'pricePerUnit': pricePerUnit,
+      'saleDate': now.toIso8601String(),
+      'monthKey': monthKey,
+      'yearKey': yearKey,
+    };
+
     await db.insert('sales', {
       'productName': productName,
       'hindiName': hindiName,
@@ -129,6 +160,34 @@ class DBHelper {
       'monthKey': monthKey,
       'yearKey': yearKey,
     });
+
+    // Cloud Firestore
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc("123");
+
+    // ✅ Step 1: Add the sale
+    await userRef.collection('sales').add(sale);
+
+    // ✅ Step 2: Ensure the stock document exists before updating
+    final stockDoc = userRef.collection('stock_list').doc(batchId);
+    final stockSnapshot = await stockDoc.get();
+
+    if (stockSnapshot.exists) {
+      // Update quantity safely
+      await stockDoc.update({
+        'quantityRemaining': FieldValue.increment(-qty),
+      });
+    } else {
+      // If not found, recreate stock entry with reduced qty
+      await stockDoc.set({
+        'batchId': batchId,
+        'quantityRemaining': -qty, // or handle gracefully
+      }, SetOptions(merge: true));
+    }
+
+  /*  await stockDoc.update({
+      'quantityRemaining': FieldValue.increment(-qty),
+    });*/
   }
 
 
@@ -313,21 +372,57 @@ class DBHelper {
   ''');
 
     return result;
+
+
   }
+
   static Future<List<Map<String, dynamic>>> getSalesByDateRange(DateTime start, DateTime end) async {
     final db = await database;
 
     final result = await db.query(
-      'sales',
+      'grouped_sales',
       where: 'date BETWEEN ? AND ?',
-      whereArgs: [start.toIso8601String(), end.toIso8601String()],
+      whereArgs: [DateFormat('yyyy-MM-dd').format(start),  DateFormat('yyyy-MM-dd').format(end)],
       orderBy: 'date DESC',
     );
 
     return result.map((e) {
-      final productName = e["productName"]?.toString() ?? "";
-      final qty = e["quantity"]?.toString() ?? "0";
-      final priceValue = e["price"];
+      final customerName = e["customerName"]?.toString() ?? "";
+      final paymentMode = e["paymentMode"]?.toString() ?? "";
+      final totalAmountValue = e["totalAmount"];
+      final totalAmount = (totalAmountValue is num)
+          ? totalAmountValue.toStringAsFixed(2)
+          : double.tryParse(totalAmountValue?.toString() ?? "0")?.toStringAsFixed(2) ?? "0.00";
+      final dateValue = e["date"]?.toString() ?? "";
+
+      String formattedDate;
+      try {
+        formattedDate = DateTime.parse(dateValue).toString().split(" ")[0];
+      } catch (_) {
+        formattedDate = dateValue;
+      }
+
+      return {
+        "customerName": customerName,
+        "paymentMode": paymentMode,
+        "totalAmount": totalAmount,
+        "date": formattedDate,
+        "items": e["items"], // store for detail view
+      };
+    }).toList();
+  }
+ /* static Future<List<Map<String, dynamic>>> getSalesByDateRange(DateTime start, DateTime end) async {
+    final db = await database;
+
+    final result = await db.query(
+      'grouped_sales',
+      orderBy: 'date DESC',
+    );
+
+    return result.map((e) {
+      final productName = e["customerName"]?.toString() ?? "";
+      final qty = e["paymentMode"]?.toString() ?? "0";
+      final priceValue = e["totalAmount"];
       final price = (priceValue is num)
           ? priceValue.toStringAsFixed(2)
           : double.tryParse(priceValue?.toString() ?? "0")?.toStringAsFixed(2) ?? "0.00";
@@ -348,6 +443,69 @@ class DBHelper {
         "date": formattedDate,
       };
     }).toList();
+  }*/
+
+  static Future<void> insertGroupedSale({
+    required String customerName,
+    required String paymentMode,
+    required List<Map<String, dynamic>> items, // all sold products
+  }) async {
+    final db = await database;
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc("123");
+
+    final now = DateTime.now();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+    final monthKey = "${now.year}_${now.month.toString().padLeft(2, '0')}";
+    final yearKey = "${now.year}";
+
+    // ✅ Calculate total amount
+    final totalAmount = items.fold<double>(
+      0,
+          (sum, item) => sum + (item["price"] as double),
+    );
+
+    // ✅ Prepare grouped sale data
+    final saleData = {
+      "customerName": customerName,
+      "paymentMode": paymentMode,
+      "totalAmount": totalAmount,
+      "date": formattedDate,
+      "monthKey": monthKey,
+      "yearKey": yearKey,
+      "items": items,
+    };
+
+    // ✅ Save to Firestore
+    await userRef.collection("sales").add(saleData);
+
+    // ✅ Save locally (store items as JSON)
+    await db.insert('grouped_sales', {
+      "customerName": customerName,
+      "paymentMode": paymentMode,
+      "totalAmount": totalAmount,
+      "date": formattedDate,
+      "monthKey": monthKey,
+      "yearKey": yearKey,
+      "items": jsonEncode(items),
+    });
+
+    // ✅ Update stock for each sold product
+    for (var item in items) {
+      final stockDoc = userRef.collection('stock_list').doc(item["batchId"]);
+      final stockSnapshot = await stockDoc.get();
+
+      if (stockSnapshot.exists) {
+        await stockDoc.update({
+          "quantityRemaining": FieldValue.increment(-item["qty"]),
+        });
+      } else {
+        await stockDoc.set({
+          "batchId": item["batchId"],
+          "quantityRemaining": -item["qty"],
+        }, SetOptions(merge: true));
+      }
+    }
   }
 
 }

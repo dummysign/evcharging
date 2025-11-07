@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
@@ -93,6 +94,21 @@ class AddProductController extends GetxController {
 
     // Insert into global stock list
     await DBHelper.insert('stock_list', newBatch);
+    // ✅ Then sync to Firestore
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc("123");
+// ✅ Use merge:true so nothing overwrites
+    await userRef
+        .collection('products')
+        .doc(monthKey)
+        .collection('batches')
+        .doc(batchId)
+        .set(newBatch, SetOptions(merge: true));
+
+    await userRef
+        .collection('stock_list')
+        .doc(batchId)
+        .set(newBatch, SetOptions(merge: true));
   }
 
 

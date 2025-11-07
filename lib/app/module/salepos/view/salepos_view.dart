@@ -272,7 +272,7 @@ class ShopkeeperScreen extends GetView<ShopController> {
                                       ElevatedButton.icon(
                                         onPressed: () {
 
-                                          controller.completeSale();
+                                          controller.completeSale(customerName:"Aditya",paymentMode:"Cash");
                                           Get.snackbar(
                                             "Payment / भुगतान",
                                             "Processing payment of ₹${controller.total.toStringAsFixed(2)}",
