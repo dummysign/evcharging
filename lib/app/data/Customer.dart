@@ -1,9 +1,15 @@
 import 'package:get/get.dart';
 
 class Customer {
-  String name;
-  String hindiName;
-  RxList<Map<String, dynamic>> ledger = <Map<String, dynamic>>[].obs;
+  final String name;
+  final String hindiName;
+  final String? phone;
+  final double? totalDue;
 
-  Customer({required this.name, required this.hindiName});
+  Customer({
+    required this.name,
+    required this.hindiName,
+    this.phone,
+    this.totalDue,
+  });
 }

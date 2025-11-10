@@ -24,7 +24,7 @@ class KhataController extends GetxController {
     Customer(name: "Sita Devi", hindiName: "सीता देवी"),
   ].obs;
 
-  void addToKhata(Customer customer) {
+  /*void addToKhata(Customer customer) {
     for (var item in cart) {
       customer.ledger.add({
         "productName": item['name'],
@@ -36,7 +36,7 @@ class KhataController extends GetxController {
       });
     }
     cart.clear();
-  }
+  }*/
 
   // Total price of current cart
   // double get total => cart.fold(0, (sum, item) => sum + (item['price'] as double));

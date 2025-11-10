@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../../../common/api/data/db_helper.dart';
@@ -15,6 +19,7 @@ class ShopController extends GetxController {
   void onInit() {
     super.onInit();
     loadProducts();
+    loadCustomers();
   }
 
   Future<void> loadProducts() async {
@@ -311,12 +316,221 @@ class ShopController extends GetxController {
 
   void clearCart() => cart.clear();
 
-  var customers = <Customer>[
-    Customer(name: "Ramesh Kumar", hindiName: "रामेश कुमार"),
-    Customer(name: "Sita Devi", hindiName: "सीता देवी"),
-  ].obs;
+  var customers = <Customer>[].obs;
+
+  Future<void> loadCustomers() async {
+    try {
+      final dbCustomers = await DBHelper.getAllKhatas();
+      final localCustomers = dbCustomers.map((row) {
+        return Customer(
+          name: (row['customerName'] ?? '').toString(),
+          hindiName: (row['customerName'] ?? '').toString(),
+          phone: row['phone']?.toString() ?? '',
+          totalDue: (row['totalDue'] is num)
+              ? (row['totalDue'] as num).toDouble()
+              : double.tryParse(row['totalDue']?.toString() ?? '0') ?? 0.0,
+        );
+      }).toList();
+
+      // 🟢 Try Firebase too (if internet available)
+      List<Customer> firebaseCustomers = [];
+      try {
+        final firestore = FirebaseFirestore.instance;
+        final snapshot = await firestore
+            .collection('users')
+            .doc('123')
+            .collection('khata')
+            .get();
+
+        firebaseCustomers = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return Customer(
+            name: (data['customerName'] ?? '').toString(),
+            hindiName: (data['customerName'] ?? '').toString(),
+            phone: (data['phone'] ?? '').toString(),
+            totalDue: (data['totalDue'] is num)
+                ? (data['totalDue'] as num).toDouble()
+                : double.tryParse(data['totalDue']?.toString() ?? '0') ?? 0.0,
+          );
+        }).toList();
+      } catch (e) {
+        print("⚠️ Firebase fetch failed, using local only: $e");
+      }
+
+      // 🟢 Merge both lists — remove duplicates (by phone or name)
+      final merged = <Customer>[];
+
+      for (var c in [...localCustomers, ...firebaseCustomers]) {
+        final exists = merged.any((x) =>
+        ((x.phone ?? '').isNotEmpty && x.phone == c.phone) ||
+            (x.name.trim().toLowerCase() == c.name.trim().toLowerCase()));
+
+        if (!exists) merged.add(c);
+      }
+
+      customers.assignAll(merged);
+
+      print("✅ Loaded ${customers.length} customers with khata");
+    } catch (e) {
+      print("❌ Error loading khata customers: $e");
+    }
+  }
 
   void addToKhata(Customer customer) async {
+    final db = await DBHelper.database;
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc('123');
+
+    double totalAmount = 0;
+    List<Map<String, dynamic>> items = [];
+
+    for (var item in cart) {
+      Product product = item["product"];
+      ProductBatch batch = item["batch"];
+      double qty = item["qty"];
+      String unit = item["unit"];
+      double price = item["price"];
+
+      // 🧾 Add to local khata transaction list
+      items.add({
+        "productName": product.name,
+        "hindiName": product.hindiName,
+        "qty": qty,
+        "unit": unit,
+        "price": price,
+        "date": DateTime.now().toIso8601String(),
+      });
+
+      totalAmount += price;
+
+      // ✅ Update stock
+      final saleInBase = qty * _getUnitFactor(unit);
+      final stockInBase = batch.stock * _getUnitFactor(product.unit);
+
+      if (saleInBase <= stockInBase) {
+        final newStockBase = stockInBase - saleInBase;
+        batch.stock = newStockBase / _getUnitFactor(product.unit);
+
+        await db.update(
+          'stock_list',
+          {'quantityRemaining': batch.stock},
+          where: 'englishName = ? AND date = ?',
+          whereArgs: [product.name, batch.purchaseDate.toIso8601String()],
+        );
+      } else {
+        Get.snackbar("Stock Error", "Not enough stock for ${product.name}");
+      }
+    }
+
+    // 🟢 Check if khata exists locally
+    final existing = await db.query(
+      'khata_records',
+      where: 'phone = ?',
+      whereArgs: [customer.phone ?? ''],
+    );
+
+    if (existing.isNotEmpty) {
+      // ✅ Add to existing khata
+      final record = existing.first;
+      final transactions = jsonDecode((record['transactions'] ?? '[]').toString()) as List;
+
+      transactions.add({
+        "date": DateTime.now().toIso8601String(),
+        "amount": totalAmount,
+        "note": "Items purchased",
+        "items": items,
+        "paid": false,
+      });
+
+      final newTotal = ((record['totalDue'] ?? 0) as num) + totalAmount;
+
+      await db.update(
+        'khata_records',
+        {
+          "transactions": jsonEncode(transactions),
+          "totalDue": newTotal,
+          "lastUpdated": DateTime.now().toIso8601String(),
+        },
+        where: 'phone = ?',
+        whereArgs: [customer.phone ?? ''],
+      );
+    } else {
+      // ✅ Create new khata record
+      final newRecord = {
+        "customerName": customer.name,
+        "phone": customer.phone ?? '',
+        "totalDue": totalAmount,
+        "transactions": jsonEncode([
+          {
+            "date": DateTime.now().toIso8601String(),
+            "amount": totalAmount,
+            "note": "Items purchased",
+            "items": items,
+            "paid": false,
+          }
+        ]),
+        "lastUpdated": DateTime.now().toIso8601String(),
+      };
+
+      await db.insert('khata_records', newRecord);
+    }
+
+    // ✅ Now update Firebase without overwriting
+    final docRef = userRef.collection('khata').doc(customer.phone ?? customer.name);
+    final docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+      // 🟢 Append to existing transactions
+      final data = docSnap.data()!;
+      final existingTransactions = List<Map<String, dynamic>>.from(data['transactions'] ?? []);
+
+      existingTransactions.add({
+        "date": DateTime.now().toIso8601String(),
+        "amount": totalAmount,
+        "note": "Items purchased",
+        "items": items,
+        "paid": false,
+      });
+
+      final newTotal = (data['totalDue'] ?? 0) + totalAmount;
+
+      await docRef.update({
+        "transactions": existingTransactions,
+        "totalDue": newTotal,
+        "lastUpdated": DateTime.now().toIso8601String(),
+      });
+    } else {
+      // 🟠 First time — create new document
+      await docRef.set({
+        "customerName": customer.name,
+        "phone": customer.phone ?? '',
+        "totalDue": totalAmount,
+        "transactions": [
+          {
+            "date": DateTime.now().toIso8601String(),
+            "amount": totalAmount,
+            "note": "Items purchased",
+            "items": items,
+            "paid": false,
+          }
+        ],
+        "lastUpdated": DateTime.now().toIso8601String(),
+      });
+    }
+
+    cart.clear();
+    products.refresh();
+    completeSale(customerName : customer.name,paymentMode :"Khata");
+
+    Get.snackbar(
+      "खाता अपडेट हुआ",
+      "${customer.name} के खाते में ₹${totalAmount.toStringAsFixed(2)} जोड़ा गया",
+      backgroundColor: Colors.green.shade100,
+    );
+  }
+
+
+/*  void addToKhata(Customer customer) async {
     final db = await DBHelper.database;
 
     for (var item in cart) {
@@ -326,14 +540,14 @@ class ShopController extends GetxController {
       String unit = item["unit"];
 
       // 1️⃣ Record the transaction in customer ledger
-      customer.ledger.add({
+    *//*  customer.ledger.add({
         "productName": item['name'],
         "productHindiName": item['hindiName'],
         "qty": qty,
         "unit": unit,
         "price": item['price'],
         "date": DateTime.now(),
-      });
+      });*//*
 
       // 2️⃣ Update stock in base units
       final saleInBase = qty * _getUnitFactor(unit);
@@ -357,7 +571,7 @@ class ShopController extends GetxController {
     // 3️⃣ Clear cart
     cart.clear();
     products.refresh();
-  }
+  }*/
 
 
   double _getUnitFactor(String? unit) {

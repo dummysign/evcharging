@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../module/addkhata/binding/addkhata_binding.dart';
+import '../module/addkhata/view/addkhata_view.dart';
 import '../module/addproduct/binding/addproduct_binding.dart';
 import '../module/addproduct/view/addproduct_view.dart';
 import '../module/home/binding/home_binding.dart';
@@ -143,6 +145,11 @@ class AppPages {
       name: _Paths.SPTEXT,
       page: () => const SpeechPage(),
       binding: SptextBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADDKHATA,
+      page: () => const AddKhataView(),
+      binding: AddKhataBinding(),
     ),
   ];
 }

@@ -28,7 +28,7 @@ class CustomerLedgerScreen extends StatelessWidget {
           )),
           Divider(),
 
-          // Ledger Entries
+          /*// Ledger Entries
           Expanded(
             child: Obx(() {
               if (customer.ledger.isEmpty) {
@@ -54,7 +54,7 @@ class CustomerLedgerScreen extends StatelessWidget {
                 },
               );
             }),
-          ),
+          ),*/
         ],
       ),
     );

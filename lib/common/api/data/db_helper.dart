@@ -100,8 +100,131 @@ class DBHelper {
   )
 ''');
 
+        await db.execute('''
+          CREATE TABLE khata_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customerName TEXT,
+            phone TEXT UNIQUE,
+            totalDue REAL,
+            lastUpdated TEXT,
+            transactions TEXT
+          )
+        ''');
+
       },
     );
+  }
+
+  /// Add new purchase or update existing khata
+  static Future<void> insertOrUpdateKhata({
+    required String customerName,
+    required String phone,
+    required double amount,
+    required String note,
+  }) async {
+    final db = await database;
+    final existing = await db.query('khata_records', where: 'phone = ?', whereArgs: [phone]);
+
+    if (existing.isNotEmpty) {
+      final record = existing.first;
+
+      // ✅ Ensure it's always a String before decoding
+      final transactionsJson = record['transactions']?.toString() ?? '[]';
+      final transactions = jsonDecode(transactionsJson) as List;
+
+      transactions.add({
+        "date": DateTime.now().toIso8601String(),
+        "amount": amount,
+        "note": note,
+        "paid": false,
+      });
+
+      // ✅ Safely parse numeric value
+      final currentTotal = (record['totalDue'] is num)
+          ? record['totalDue'] as num
+          : double.tryParse(record['totalDue']?.toString() ?? '0') ?? 0.0;
+
+      final newTotal = currentTotal + amount;
+
+      await db.update(
+        'khata_records',
+        {
+          "transactions": jsonEncode(transactions),
+          "totalDue": newTotal,
+          "lastUpdated": DateTime.now().toIso8601String(),
+        },
+        where: 'phone = ?',
+        whereArgs: [phone],
+      );
+    } else {
+      final newTransactions = [
+        {
+          "date": DateTime.now().toIso8601String(),
+          "amount": amount,
+          "note": note,
+          "paid": false,
+        }
+      ];
+
+      await db.insert('khata_records', {
+        "customerName": customerName,
+        "phone": phone,
+        "totalDue": amount,
+        "lastUpdated": DateTime.now().toIso8601String(),
+        "transactions": jsonEncode(newTransactions),
+      });
+    }
+  }
+
+  /// Record payment
+  static Future<void> recordPayment(String phone, double amount) async {
+    final db = await database;
+    final record = await db.query('khata_records', where: 'phone = ?', whereArgs: [phone]);
+
+    if (record.isEmpty) return;
+
+    final data = record.first;
+
+    // ✅ Ensure the transactions field is a String before decoding
+    final transactionsJson = data['transactions']?.toString() ?? '[]';
+    final transactions = jsonDecode(transactionsJson) as List;
+
+    transactions.add({
+      "date": DateTime.now().toIso8601String(),
+      "amount": -amount,
+      "note": "Payment received",
+      "paid": true,
+    });
+
+    // ✅ Safely convert totalDue to a number
+    final currentTotal = (data['totalDue'] is num)
+        ? data['totalDue'] as num
+        : double.tryParse(data['totalDue']?.toString() ?? '0') ?? 0.0;
+
+    final newTotal = currentTotal - amount;
+
+    await db.update(
+      'khata_records',
+      {
+        "transactions": jsonEncode(transactions),
+        "totalDue": newTotal < 0 ? 0 : newTotal,
+        "lastUpdated": DateTime.now().toIso8601String(),
+      },
+      where: 'phone = ?',
+      whereArgs: [phone],
+    );
+  }
+
+
+
+  static Future<List<Map<String, dynamic>>> getAllKhatas() async {
+    final db = await database;
+    return await db.query('khata_records');
+  }
+
+  static Future<void> deleteKhata(String phone) async {
+    final db = await database;
+    await db.delete('khata_records', where: 'phone = ?', whereArgs: [phone]);
   }
 
   // Insert into a specific table

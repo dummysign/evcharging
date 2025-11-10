@@ -261,6 +261,86 @@ class LandingPageView extends GetView<LandingPageController>{
                       )
                     ],
                   ),
+                  SizedBox(height: Get.height * 0.09),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: (){
+                            controller.onOptionTag("ADD LEGER");
+                          },
+                          child: Material(
+                            elevation: 4.0,
+                            borderRadius: BorderRadius.circular(8),
+                            color: Color(0xFFE1ECFD),
+                            child: Container(
+                              height: 130,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: Column(
+                                children: [
+                                  SizedBox(height: 20),
+                                  Text('ADD LEGER',
+                                    style:TextStyle(
+                                        fontFamily: 'popregular',
+                                        fontSize: 15,
+                                        color: Colors.blue
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                  Image.asset(
+                                    'images/chargingstation.png',
+                                    // Replace with your asset path
+                                    height: 40, // Adjust the size as needed
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 20),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: (){
+                            controller.onOptionTag("REPORT");
+                          },
+                          child: Material(
+                            elevation: 4.0,
+                            borderRadius: BorderRadius.circular(8),
+                            color: Color(0xFFE1ECFD),
+                            child: Container(
+                              height: 130,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: Column(
+                                children: [
+                                  SizedBox(height: 20),
+                                  Text('LEGER',
+                                    style:TextStyle(
+                                        fontFamily: 'popregular',
+                                        fontSize: 15,
+                                        color: Colors.blue
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                  Image.asset(
+                                    'images/profilev.png',
+                                    // Replace with your asset path
+                                    height: 40, // Adjust the size as needed
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
                  /* Padding(
                     padding: EdgeInsets.symmetric(horizontal: Get.width * 0.1),
                     child: Center(
