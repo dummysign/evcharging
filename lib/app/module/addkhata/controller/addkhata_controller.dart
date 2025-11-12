@@ -44,8 +44,9 @@ class AddKhataController extends GetxController{
       "transactions": jsonEncode([]),
       "lastUpdated": DateTime.now().toIso8601String(),
     };
-
+;
     await db.insert('khata_records', record);
+   await DBHelper.insertOrUpdateCustomer(name : name,phone:phone);
 
     // ✅ Also save to Firebase
     final firestore = FirebaseFirestore.instance;

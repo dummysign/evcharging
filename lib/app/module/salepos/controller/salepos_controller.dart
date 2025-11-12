@@ -269,7 +269,7 @@ class ShopController extends GetxController {
         "productName": product.name,
         "hindiName": product.hindiName,
         "batchId": batch.batchid,
-        "qty": qty,
+        "qty": saleInBase,
         "unit": unit,
         "price": price,
         "pricePerUnit": batch.pricePerUnit,
@@ -300,6 +300,7 @@ class ShopController extends GetxController {
         whereArgs: [batchId],
       );
     }
+
 
     // 4️⃣ Clear cart and refresh UI
     cart.clear();
@@ -482,7 +483,10 @@ class ShopController extends GetxController {
     if (docSnap.exists) {
       // 🟢 Append to existing transactions
       final data = docSnap.data()!;
-      final existingTransactions = List<Map<String, dynamic>>.from(data['transactions'] ?? []);
+      final rawTransactions = data['transactions'];
+      final existingTransactions = (rawTransactions is String)
+          ? jsonDecode(rawTransactions)
+          : (rawTransactions is List ? rawTransactions : []);
 
       existingTransactions.add({
         "date": DateTime.now().toIso8601String(),
@@ -521,11 +525,40 @@ class ShopController extends GetxController {
     cart.clear();
     products.refresh();
     completeSale(customerName : customer.name,paymentMode :"Khata");
+    updateCustomerTotals(phone :customer.phone!,purchaseAmount :totalAmount, dueAmount : totalAmount);
 
     Get.snackbar(
       "खाता अपडेट हुआ",
       "${customer.name} के खाते में ₹${totalAmount.toStringAsFixed(2)} जोड़ा गया",
       backgroundColor: Colors.green.shade100,
+    );
+  }
+
+
+  static Future<void> updateCustomerTotals({
+    required String phone,
+    double? purchaseAmount,
+    double? dueAmount,
+  }) async {
+    final db = await DBHelper.database;
+    final existing = await db.query('customers', where: 'phone = ?', whereArgs: [phone]);
+    if (existing.isEmpty) return;
+
+    final row = existing.first;
+    final newTotalPurchases =
+        ((row['totalPurchases'] as num?)?.toDouble() ?? 0) + (purchaseAmount ?? 0);
+    final newTotalDue =
+        ((row['totalDue'] as num?)?.toDouble() ?? 0 )+ (dueAmount ?? 0);
+
+    await db.update(
+      'customers',
+      {
+        'totalPurchases': newTotalPurchases,
+        'totalDue': newTotalDue,
+        'lastPurchaseDate': DateTime.now().toIso8601String(),
+      },
+      where: 'phone = ?',
+      whereArgs: [phone],
     );
   }
 

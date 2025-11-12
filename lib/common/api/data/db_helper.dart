@@ -111,8 +111,60 @@ class DBHelper {
           )
         ''');
 
+        await db.execute('''
+  CREATE TABLE IF NOT EXISTS customers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    phone TEXT UNIQUE,
+    address TEXT,
+    email TEXT,
+    gstNumber TEXT,
+    createdAt TEXT,
+    lastPurchaseDate TEXT,
+    totalPurchases REAL DEFAULT 0,
+    totalDue REAL DEFAULT 0
+  )
+''');
+
       },
     );
+  }
+
+  static Future<void> insertOrUpdateCustomer({
+    required String name,
+    required String phone,
+    String? address,
+    String? email,
+    String? gstNumber,
+  }) async {
+    final db = await database;
+
+    final existing = await db.query('customers', where: 'phone = ?', whereArgs: [phone]);
+
+    if (existing.isNotEmpty) {
+      await db.update(
+        'customers',
+        {
+          'name': name,
+          'address': address ?? existing.first['address'],
+          'email': email ?? existing.first['email'],
+          'gstNumber': gstNumber ?? existing.first['gstNumber'],
+          'lastPurchaseDate': DateTime.now().toIso8601String(),
+        },
+        where: 'phone = ?',
+        whereArgs: [phone],
+      );
+    } else {
+      await db.insert('customers', {
+        'name': name,
+        'phone': phone,
+        'address': address ?? '',
+        'email': email ?? '',
+        'gstNumber': gstNumber ?? '',
+        'createdAt': DateTime.now().toIso8601String(),
+        'lastPurchaseDate': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
   /// Add new purchase or update existing khata

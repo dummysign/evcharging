@@ -30,6 +30,11 @@ class LandingPageController extends GetxController{
        case 'ADD LEGER':
          Get.toNamed(Routes.ADDKHATA);
          break;
+       case 'LEGER':
+         Get.toNamed(Routes.KHATA);
+         break;
+
+
 
        default:
          Get.snackbar('Unknown', 'Unknown tab: $tabKey');

@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import '../../../../common/api/data/db_helper.dart';
 import '../../../data/Customer.dart';
 import '../../../data/Product.dart';
 
@@ -16,81 +20,76 @@ class KhataController extends GetxController {
     Product(name: "Rice", hindiName: "चावल", pricePerUnit: 60, stock: 10000, unit: "gm", minQty: 1000),*/
   ].obs;
 
+
   var cart = <Map<String, dynamic>>[].obs;
 
 
-  var customers = <Customer>[
-    Customer(name: "Ramesh Kumar", hindiName: "रामेश कुमार"),
-    Customer(name: "Sita Devi", hindiName: "सीता देवी"),
-  ].obs;
+  var customers = <Customer>[].obs;
 
-  /*void addToKhata(Customer customer) {
-    for (var item in cart) {
-      customer.ledger.add({
-        "productName": item['name'],
-        "productHindiName": item['hindiName'],
-        "qty": item['qty'],
-        "unit": item['unit'],
-        "price": item['price'],
-        "date": DateTime.now(),
-      });
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadCustomers();
+  }
+
+  Future<void> loadCustomers() async {
+    try {
+      final dbCustomers = await DBHelper.getAllKhatas();
+      final localCustomers = dbCustomers.map((row) {
+        return Customer(
+          name: (row['customerName'] ?? '').toString(),
+          hindiName: (row['customerName'] ?? '').toString(),
+          phone: row['phone']?.toString() ?? '',
+          totalDue: (row['totalDue'] is num)
+              ? (row['totalDue'] as num).toDouble()
+              : double.tryParse(row['totalDue']?.toString() ?? '0') ?? 0.0,
+        );
+      }).toList();
+
+      // 🟢 Try Firebase too (if internet available)
+      List<Customer> firebaseCustomers = [];
+      try {
+        final firestore = FirebaseFirestore.instance;
+        final snapshot = await firestore
+            .collection('users')
+            .doc('123')
+            .collection('khata')
+            .get();
+
+        firebaseCustomers = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return Customer(
+            name: (data['customerName'] ?? '').toString(),
+            hindiName: (data['customerName'] ?? '').toString(),
+            phone: (data['phone'] ?? '').toString(),
+            totalDue: (data['totalDue'] is num)
+                ? (data['totalDue'] as num).toDouble()
+                : double.tryParse(data['totalDue']?.toString() ?? '0') ?? 0.0,
+          );
+        }).toList();
+      } catch (e) {
+        print("⚠️ Firebase fetch failed, using local only: $e");
+      }
+
+      // 🟢 Merge both lists — remove duplicates (by phone or name)
+      final merged = <Customer>[];
+
+      for (var c in [...localCustomers, ...firebaseCustomers]) {
+        final exists = merged.any((x) =>
+        ((x.phone ?? '').isNotEmpty && x.phone == c.phone) ||
+            (x.name.trim().toLowerCase() == c.name.trim().toLowerCase()));
+
+        if (!exists) merged.add(c);
+      }
+
+      customers.assignAll(merged);
+
+      print("✅ Loaded ${customers.length} customers with khata");
+    } catch (e) {
+      print("❌ Error loading khata customers: $e");
     }
-    cart.clear();
-  }*/
-
-  // Total price of current cart
-  // double get total => cart.fold(0, (sum, item) => sum + (item['price'] as double));
-
-  /* void sellProduct(Product product, double qty, double price) {
-    if (qty < product.minQty) {
-      Get.snackbar("Invalid Qty", "Quantity should be at least ${product.minQty} ${product.unit}");
-      return;
-    }
-
-    if (qty <= product.stock) {
-      product.stock -= qty;
-      cart.add({
-        "name": product.name,
-        "qty": qty,
-        "unit": product.unit,
-        "price": price,
-      });
-      products.refresh();
-      cart.refresh();
-    } else {
-      Get.snackbar("Stock Error", "Not enough stock available!");
-    }
-  }*/
-
-  void sellProduct(Product product, double qty, double price) {
-    /*if (qty <= product.stock) {
-      product.stock -= qty;
-      cart.add({
-        "name": product.name,
-        "hindiName": product.hindiName,
-        "qty": qty,
-        "unit": product.unit,
-        "price": price,
-        "pricePerUnit":"" ;
-      });
-      products.refresh();
-      cart.refresh();
-    } else {
-      Get.snackbar("Stock Error", "Not enough stock available!");
-    }*/
   }
 
 
-  // Computed total
-  double get total {
-    double sum = 0;
-    for (var item in cart) {
-      sum += (item['price'] ?? 0).toDouble();
-    }
-    return sum;
-  }
-
-  void clearCart() {
-    cart.clear();
-  }
 }

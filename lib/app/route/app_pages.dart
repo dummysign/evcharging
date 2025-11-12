@@ -6,6 +6,10 @@ import '../module/addproduct/binding/addproduct_binding.dart';
 import '../module/addproduct/view/addproduct_view.dart';
 import '../module/home/binding/home_binding.dart';
 import '../module/home/view/home_view.dart';
+import '../module/khata/binding/customerledger_binding.dart';
+import '../module/khata/binding/khata_binding.dart';
+import '../module/khata/view/customer_ledger_screen.dart';
+import '../module/khata/view/khata_view.dart';
 import '../module/landingpage/binding/landingpage_binding.dart';
 import '../module/landingpage/view/ladningpage_view.dart';
 import '../module/nearbystation/binding/nearbystation_binding.dart';
@@ -113,8 +117,8 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.KHATA,
-      page: () => const ShopkeeperScreen(),
-      binding: SaleposBinding(),
+      page: () => const KhataDashboard(),
+      binding: KhataBinding(),
     ),
     GetPage(
       name: _Paths.ADDPRODUCT,
@@ -150,6 +154,11 @@ class AppPages {
       name: _Paths.ADDKHATA,
       page: () => const AddKhataView(),
       binding: AddKhataBinding(),
+    ),
+    GetPage(
+      name: _Paths.CUSTLEDGER,
+      page: () =>  CustomerLedgerScreenState(),
+      binding: CustomerledgerBinding(),
     ),
   ];
 }

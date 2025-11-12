@@ -305,7 +305,7 @@ class LandingPageView extends GetView<LandingPageController>{
                       Expanded(
                         child: GestureDetector(
                           onTap: (){
-                            controller.onOptionTag("REPORT");
+                            controller.onOptionTag("LEGER");
                           },
                           child: Material(
                             elevation: 4.0,
