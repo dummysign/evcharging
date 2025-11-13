@@ -15,11 +15,55 @@ class ShopController extends GetxController {
   var products = <Product>[].obs;
   var cart = <Map<String, dynamic>>[].obs;
 
+
   @override
   void onInit() {
     super.onInit();
     loadProducts();
     loadCustomers();
+  }
+
+  Future<void> createKhata(String name ,String phone) async {
+
+    if (name.isEmpty || phone.isEmpty) {
+      Get.snackbar("Missing Info", "Please enter both name and phone number");
+      return;
+    }
+
+
+    final db = await DBHelper.database;
+
+    // ✅ Check if khata already exists
+    final existing = await db.query('khata_records', where: 'phone = ?', whereArgs: [phone]);
+
+    if (existing.isNotEmpty) {
+      Get.snackbar("Already Exists", "A khata already exists for this customer");
+      return;
+    }
+
+    // ✅ Create local record
+    final record = {
+      "customerName": name,
+      "phone": phone,
+      "totalDue": 0.0,
+      "transactions": jsonEncode([]),
+      "lastUpdated": DateTime.now().toIso8601String(),
+    };
+    await db.insert('khata_records', record);
+    await DBHelper.insertOrUpdateCustomer(name : name,phone:phone);
+
+    // ✅ Also save to Firebase
+    final firestore = FirebaseFirestore.instance;
+    await firestore
+        .collection('users')
+        .doc('123')
+        .collection('khata')
+        .doc(phone)
+        .set(record);
+
+    Get.snackbar("Success", "Khata created successfully");
+    loadCustomers();
+
   }
 
   Future<void> loadProducts() async {
@@ -320,6 +364,7 @@ class ShopController extends GetxController {
   var customers = <Customer>[].obs;
 
   Future<void> loadCustomers() async {
+    customers.clear();
     try {
       final dbCustomers = await DBHelper.getAllKhatas();
       final localCustomers = dbCustomers.map((row) {

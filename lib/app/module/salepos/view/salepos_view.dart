@@ -14,7 +14,14 @@ class ShopkeeperScreen extends GetView<ShopController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Shopkeeper App ")),
+      appBar: AppBar(title: Text("Shopkeeper App "),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.person_add),
+            onPressed: _showAddCustomerDialog,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -586,6 +593,48 @@ class ShopkeeperScreen extends GetView<ShopController> {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  void _showAddCustomerDialog() {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    Get.dialog(
+      AlertDialog(
+        title: Text("Add Customer"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: "Name"),
+            ),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(labelText: "Phone Number"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty &&
+                  phoneController.text.isNotEmpty) {
+                controller.createKhata(
+                    nameController.text, phoneController.text);
+                Get.back();
+              }
+            },
+            child: Text("Add"),
+          ),
+        ],
+      ),
     );
   }
 
